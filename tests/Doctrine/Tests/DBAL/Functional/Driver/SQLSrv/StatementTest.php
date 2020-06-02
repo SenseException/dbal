@@ -4,6 +4,9 @@ namespace Doctrine\Tests\DBAL\Functional\Driver\SQLSrv;
 
 use Doctrine\DBAL\Driver\SQLSrv\Driver;
 use Doctrine\DBAL\Driver\SQLSrv\SQLSrvException;
+use Doctrine\DBAL\Logging\EchoSQLLogger;
+use Doctrine\DBAL\ParameterType;
+use Doctrine\DBAL\Schema\Table;
 use Doctrine\Tests\DbalFunctionalTestCase;
 use function extension_loaded;
 
@@ -33,5 +36,27 @@ class StatementTest extends DbalFunctionalTestCase
         // so the preparation happens before the first execution when variables are already in place
         $this->expectException(SQLSrvException::class);
         $stmt->execute();
+    }
+
+    public function testThis() : void
+    {
+        $table = new Table('stmt_test');
+        $table->addColumn('id', 'integer');
+        $table->addColumn('name', 'text', ['notnull' => false]);
+        $this->connection->getSchemaManager()->dropAndCreateTable($table);
+
+        $this->connection->insert('stmt_test', [
+            'id'     => 1,
+            'name'   => 'ignored',
+        ], [
+            ParameterType::INTEGER,
+            ParameterType::STRING,
+        ]);
+
+        $this->connection->getConfiguration()->setSQLLogger(new EchoSQLLogger());
+
+        $this->connection->fetchAll('select * from stmt_test where name = ?', ['ignored'], [ParameterType::STRING]);
+
+        $this->fail();
     }
 }
